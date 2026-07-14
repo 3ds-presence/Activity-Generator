@@ -1,36 +1,26 @@
 use std::path::Path;
 
 use log::info;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, Database, DatabaseConnection, DbBackend,
-    EntityTrait, QueryFilter, Set, Statement,
-};
-use sea_orm::sea_query::{SqliteQueryBuilder, TableCreateStatement};
 
-use crate::error::Error;
-use crate::models::{ActiveModel, Column, Entity, MetaJson, Model};
+use crate::{entry::Entry, error::Error};
 
-/// Initializes an in-memory SQLite database and creates the `game_info` table.
-pub async fn create_database() -> Result<DatabaseConnection, Error> {
-    let db = Database::connect("sqlite::memory:").await?;
-
-    let stmt: TableCreateStatement =
-        sea_orm::Schema::new(DbBackend::Sqlite).create_table_from_entity(Entity);
-    db.execute(Statement::from_string(
-        DbBackend::Sqlite,
-        stmt.to_string(SqliteQueryBuilder),
-    ))
-    .await?;
-
-    Ok(db)
+pub(crate) struct HashMapDatabase {
+    entries: std::collections::HashMap<String, Entry>,
 }
 
-/// Scans the `info_dir` directory for `meta.json` files and inserts them
-/// into the database. Returns the number of games loaded.
-pub async fn load_game_data(
-    db: &DatabaseConnection,
-    info_dir: &str,
-) -> Result<u64, Error> {
+impl HashMapDatabase {
+    fn new() -> Self {
+        HashMapDatabase {
+            entries: std::collections::HashMap::new(),
+        }
+    }
+}
+
+pub async fn create_database() -> HashMapDatabase {
+    HashMapDatabase::new()
+}
+
+pub async fn load_game_data(db: &mut HashMapDatabase, info_dir: &str) -> Result<u64, Error> {
     let info_path = Path::new(info_dir);
     let mut count = 0u64;
 
@@ -53,15 +43,9 @@ pub async fn load_game_data(
         }
 
         let content = std::fs::read_to_string(&meta_path)?;
-        let meta: MetaJson = serde_json::from_str(&content)?;
+        let meta: Entry = serde_json::from_str(&content)?;
 
-        let active_model = ActiveModel {
-            title_id: Set(title_id.to_string()),
-            short: Set(meta.short),
-            long: Set(meta.long),
-            publisher: Set(meta.publisher),
-        };
-        active_model.insert(db).await?;
+        db.entries.insert(title_id.to_string(), meta);
         count += 1;
     }
 
@@ -69,13 +53,6 @@ pub async fn load_game_data(
     Ok(count)
 }
 
-/// Queries the database for a game by its title ID.
-pub async fn find_game(
-    db: &DatabaseConnection,
-    title_id: &str,
-) -> Result<Option<Model>, sea_orm::DbErr> {
-    Entity::find()
-        .filter(Column::TitleId.eq(title_id))
-        .one(db)
-        .await
+pub async fn find_game(db: &HashMapDatabase, title_id: &str) -> Result<Option<Entry>, Error> {
+    Ok(db.entries.get(title_id).cloned())
 }
