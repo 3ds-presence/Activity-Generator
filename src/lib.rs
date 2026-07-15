@@ -4,9 +4,11 @@ use log::info;
 mod activity_builder;
 mod database;
 mod error;
-pub mod entry;
+mod entry;
+pub mod user_info;
 
-pub use error::Error;
+pub use user_info::UserInfo;
+use error::Error;
 use database::HashMapDatabase;
 
 /// In-memory game catalogue backed by a HashMap.
@@ -17,6 +19,7 @@ use database::HashMapDatabase;
 pub struct GameDatabase {
     db: HashMapDatabase,
     assets_base_url: String,
+    mii_generator_server: String,
 }
 
 impl GameDatabase {
@@ -27,7 +30,10 @@ impl GameDatabase {
     /// `assets_base_url` is the base URL for game icons, e.g.
     /// `"http://localhost:8080/imgs/"`. The final image URL will be
     /// `{assets_base_url}{title_id}/icon.png`.
-    pub async fn new(info_dir: &str, assets_base_url: &str) -> Result<Self, Error> {
+    /// 
+    /// `mii_generator_server` is the URL of the Mii generator server, e.g.
+    /// `"http://localhost:8080/miis/"`. 
+    pub async fn new(info_dir: &str, assets_base_url: &str, mii_generator_server: &str) -> Result<Self, Error> {
         let mut db = database::create_database().await;
         let count = database::load_game_data(&mut db, info_dir).await?;
         info!("GameDatabase initialized with {} games", count);
@@ -35,6 +41,7 @@ impl GameDatabase {
         Ok(Self {
             db,
             assets_base_url: assets_base_url.trim_end_matches('/').to_string(),
+            mii_generator_server: mii_generator_server.trim_end_matches('/').to_string(),
         })
     }
 
@@ -43,8 +50,8 @@ impl GameDatabase {
     /// If the title is found in the catalogue, the activity is populated
     /// with the game's metadata. Otherwise a fallback "Unknown game"
     /// activity is returned.
-    pub async fn build_activity(&self, title_id: &str) -> Activity {
-        match database::find_game(&self.db, title_id).await {
+    pub async fn build_activity(&self, title_id: &str, user_info: &user_info::UserInfo) -> Activity {
+        let mut act = match database::find_game(&self.db, title_id).await {
             Ok(Some(model)) => activity_builder::build_known_activity(
                 title_id,
                 &model.short,
@@ -52,7 +59,14 @@ impl GameDatabase {
                 &model.publisher,
                 &self.assets_base_url,
             ),
-            _ => activity_builder::build_unknown_activity(title_id),
+            _ => activity_builder::build_unknown_activity(title_id)
+        };
+        if let Some(mii) = &user_info.mii {
+            let assets_with_mii = act.assets()
+                .set_small_image(&format!("{}/{}.png", self.mii_generator_server, mii))
+                .set_small_text(&user_info.mii_name.clone().unwrap_or("Unknown Mii".into()));
+            act = act.set_assets(assets_with_mii);
         }
+        act
     }
 }
