@@ -63,9 +63,11 @@ impl GameDatabase {
         };
         if let Some(mii) = &user_info.mii {
             let assets_with_mii = act.assets()
-                .set_small_image(&format!("{}/{}.png", self.mii_generator_server, mii))
+                .set_small_image(&format!("{}{}", self.mii_generator_server, mii))
                 .set_small_text(&user_info.mii_name.clone().unwrap_or("Unknown Mii".into()));
+            log::debug!("Mii image URL: {}", assets_with_mii.small_image());
             act = act.set_assets(assets_with_mii);
+
         }
         act
     }
