@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "activity_manager"
+name = "activity_generator"
 version = "0.1.0"
 dependencies = [
  "discord_social_rpc",
@@ -209,7 +209,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-tungstenite",
- "url",
 ]
 
 [[package]]
