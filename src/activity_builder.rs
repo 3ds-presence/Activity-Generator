@@ -4,7 +4,6 @@ use discord_social_rpc::{Activity, ActivityType, Assets};
 pub fn build_known_activity(
     title_id: &str,
     short: &str,
-    long: &str,
     publisher: &str,
     assets_base_url: &str,
 ) -> Activity {
@@ -13,8 +12,8 @@ pub fn build_known_activity(
     Activity::new()
         .set_name(short)
         .set_activity_type(ActivityType::Playing)
-        .set_state(long)
         .set_details(publisher)
+        .set_state("3ds-presence.top")
         .set_assets(Assets::new().set_large_image(&image_url))
 }
 
@@ -23,7 +22,8 @@ pub fn build_unknown_activity(
     title_id: &str,
 ) -> Activity {
     Activity::new()
-        .set_name("Unknown game")
+        .set_name("3DS game")
         .set_activity_type(ActivityType::Playing)
-        .set_state(&format!("TitleID : {}", title_id))
+        .set_details(&format!("TitleID : {}", title_id))
+        .set_state("3ds-presence.top")
 }

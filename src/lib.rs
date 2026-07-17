@@ -55,7 +55,6 @@ impl GameDatabase {
             Ok(Some(model)) => activity_builder::build_known_activity(
                 title_id,
                 &model.short,
-                &model.long,
                 &model.publisher,
                 &self.assets_base_url,
             ),
