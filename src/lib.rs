@@ -3,6 +3,7 @@ use discord_social_rpc::{Activity, ActivityType, Assets};
 pub mod info;
 
 pub use info::UserInfo;
+use log::debug;
 
 pub struct ActivityGenerator {
     #[allow(dead_code)] // Will be used later
@@ -43,7 +44,8 @@ impl ActivityGenerator {
         game_info: &info::GameInfo,
     ) -> Activity {
         let image_url = format!("{}/{}/icon.png", self.assets_base_url, game_info.title_id);
-
+        debug!("Game icon URL: {}", image_url);
+        
         let mut act = Activity::new()
             .set_name(&game_info.name)
             .set_activity_type(ActivityType::Playing)
@@ -56,7 +58,7 @@ impl ActivityGenerator {
                 .assets()
                 .set_small_image(&format!("{}{}", self.mii_generator_server, mii))
                 .set_small_text(&user_info.mii_name.clone().unwrap_or("Unknown Mii".into()));
-            log::debug!("Mii image URL: {}", assets_with_mii.small_image());
+            debug!("Mii image URL: {}", assets_with_mii.small_image());
             act = act.set_assets(assets_with_mii);
         }
         act
