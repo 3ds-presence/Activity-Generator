@@ -95,7 +95,7 @@ function build(game_info, extra_info)
     end
 
     return {
-        name = "Project Mirai DX - " .. song,
+        name = song .. " - Project Mirai DX",
         activity_type = 2,
         details = details,
     }
