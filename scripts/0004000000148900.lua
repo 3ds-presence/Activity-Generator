@@ -55,13 +55,13 @@ local difficulties = {
     [1] = "Normal",
     [2] = "Hard",
     [3] = "Super Hard",
+    [5] = "Theater",
 }
 
--- Game mode mapping (key = decimal from hex_to_num on 30006DFD)
+-- Game mode mapping (key = decimal from hex_to_num on 004EF580)
 local modes = {
     [0] = "Tap Mode",
     [1] = "Button Mode",
-    [2] = "Theater",
 }
 
 function build(game_info, extra_info)
@@ -73,24 +73,25 @@ function build(game_info, extra_info)
         return nil
     end
 
-    -- Get current game mode
-    local mode_id = hex_to_num(get("30006DFD"))
-    local mode = modes[mode_id]
-    if not mode then
+    -- Get current difficulty
+    local diff_id = hex_to_num(get("004FE704"))
+    local diff = difficulties[diff_id]
+    if not diff then
         fallback()
         return nil
     end
 
     local details
-    if mode == "Theater" then
+    if diff == "Theater" then
         details = "Theater"
     else
-        local diff_id = hex_to_num(get("004FE704"))
-        local diff = difficulties[diff_id]
-        if not diff then
+        local mode_id = hex_to_num(get("004EF580"))
+        local mode = modes[mode_id]
+        if not mode then
             fallback()
             return nil
         end
+        local diff = difficulties[diff_id]
         details = mode .. " | " .. diff
     end
 
