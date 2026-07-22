@@ -4,6 +4,7 @@ pub struct UserInfo {
     pub mii: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub struct GameInfo {
     pub title_id: String,
     pub name: String,
