@@ -1,6 +1,6 @@
 -- Script for Hatsune Miku Project Mirai DX (Europe)
 
--- Song/level mapping (key = decimal, result of hex_to_num(get("004FE6E0")))
+-- Song/level mapping (key = decimal, result of hex_to_num(get("006098E0")))
 local songs = {
     [28]  = "Finder (DSLR remix - re:edit)",
     [54]  = "Sweet Magic",
@@ -66,7 +66,7 @@ local modes = {
 
 function build(game_info, extra_info)
     -- Get current song/level: get() gets the hex string, hex_to_num() converts it
-    local level_id = hex_to_num(get("004FE6E0"))
+    local level_id = hex_to_num(get("006098E0"))
     local song = songs[level_id]
     if not song then
         fallback()
