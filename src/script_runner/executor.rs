@@ -40,12 +40,19 @@ impl Executor {
         }
     }
 
-    /// Read the script file from disk. Returns `None` if not found or unreadable.
+    /// Read the script file from disk. Returns `None` if not found, unreadable, or
+    /// if the path is a path traversal attempt (resolves outside the script directory).
     pub fn read_script(&self) -> Option<String> {
-        if !self.script_path.exists() {
-            debug!("No Lua script found at {:?}, using fallback", self.script_path);
+        // Anti-path-traversal: canonicalize resolves the real path following symlinks.
+        // If the resolved path doesn't start with the intended script directory, block it.
+        let script_dir = self.script_path.parent()?;
+        let canonical_base = std::fs::canonicalize(script_dir).ok()?;
+        let canonical_path = std::fs::canonicalize(&self.script_path).ok()?;
+        if !canonical_path.starts_with(&canonical_base) {
+            warn!("Path traversal attempt blocked: {:?}", self.script_path);
             return None;
         }
+
         match std::fs::read_to_string(&self.script_path) {
             Ok(c) => Some(c),
             Err(e) => {

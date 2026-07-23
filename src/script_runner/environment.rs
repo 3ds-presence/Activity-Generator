@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-use mlua::{Lua, Result as LuaResult, Table};
+use mlua::{Lua, Nil, Result as LuaResult, Table};
 
 use crate::info::GameInfo;
 
@@ -62,6 +62,10 @@ pub fn inject_helpers(lua: &Lua) -> LuaResult<()> {
             )))
         })?,
     )?;
+
+    // Remove string.dump — prevents loading untrusted bytecode
+    let string_tab: Table = lua.globals().get("string")?;
+    string_tab.set("dump", Nil)?;
 
     // `hex_to_num(hex_str)` — convert a hex string to a number.
     // Example: hex_to_num(get("004FE6E0")) or hex_to_num("1C") → 28.
