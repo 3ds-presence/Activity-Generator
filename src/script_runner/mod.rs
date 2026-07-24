@@ -112,7 +112,7 @@ impl ScriptRunner {
             }
             Ok(Err(err)) => {
                 // spawn_blocking panicked — log and discard the VM (may be in a bad state)
-                warn!("Lua spawn_blocking panicked for {}: {:?}", title_id, err);
+                warn!("Lua spawn_blocking panicked for {title_id}: {err:?}");
                 None
             }
             Err(_) => {
@@ -131,23 +131,26 @@ impl ScriptRunner {
     /// of safe standard libraries.
     async fn acquire(&self) -> Lua {
         let mut pool = self.pool.lock().await;
-        if let Some(state) = pool.pop() {
-            debug!("Reusing Lua VM from pool ({} remaining)", pool.len());
-            state
-        } else {
-            debug!("Creating new Lua VM (pool empty)");
-            Lua::new_with(
-                StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::COROUTINE | StdLib::UTF8,
-                LuaOptions::default(),
-            )
-            .expect("Failed to create sandboxed Lua VM")
-        }
+        pool.pop().map_or_else(
+            || {
+                debug!("Creating new Lua VM (pool empty)");
+                Lua::new_with(
+                    StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::COROUTINE | StdLib::UTF8,
+                    LuaOptions::default(),
+                )
+                .expect("Failed to create sandboxed Lua VM")
+            },
+            |state| {
+                debug!("Reusing Lua VM from pool ({} remaining)", pool.len());
+                state
+            },
+        )
     }
 
     /// Reset globals and return a Lua VM to the pool.
     async fn recycle(&self, lua: Lua) {
         if let Err(e) = lua.globals().clear() {
-            log::warn!("Failed to clear Lua globals: {}", e);
+            log::warn!("Failed to clear Lua globals: {e}");
         }
         let mut pool = self.pool.lock().await;
         if pool.len() < self.max_pool {

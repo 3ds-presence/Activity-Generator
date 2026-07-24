@@ -35,7 +35,7 @@ impl Executor {
     /// Create a new executor for the given `title_id` in `script_dir`.
     pub fn new(script_dir: &Path, title_id: &str) -> Self {
         Self {
-            script_path: script_dir.join(format!("{}.lua", title_id)),
+            script_path: script_dir.join(format!("{title_id}.lua")),
         }
     }
 
@@ -48,14 +48,14 @@ impl Executor {
         let canonical_base = std::fs::canonicalize(script_dir).ok()?;
         let canonical_path = std::fs::canonicalize(&self.script_path).ok()?;
         if !canonical_path.starts_with(&canonical_base) {
-            warn!("Path traversal attempt blocked: {:?}", self.script_path);
+            warn!("Path traversal attempt blocked: {}", self.script_path.display());
             return None;
         }
 
         match std::fs::read_to_string(&self.script_path) {
             Ok(c) => Some(c),
             Err(e) => {
-                warn!("Failed to read Lua script {:?}: {}", self.script_path, e);
+                warn!("Failed to read Lua script {}: {}", self.script_path.display(), e);
                 None
             }
         }
@@ -82,7 +82,7 @@ impl Executor {
     /// Load and execute the script content. Returns `true` on success.
     fn load_script(&self, lua: &Lua, script_content: &str) -> bool {
         match lua.load(script_content).exec() {
-            Ok(_) => true,
+            Ok(()) => true,
             Err(e) => {
                 if is_fallback_error(&e) {
                     debug!("Script {} requested fallback", self.script_path.display());

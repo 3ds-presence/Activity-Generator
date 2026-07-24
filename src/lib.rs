@@ -37,6 +37,7 @@ impl ActivityGenerator {
     /// `assets_base_url` — base URL for `{title_id}/icon.png`.
     /// `mii_generator_server` — base URL for Mii images.
     /// `lua_pool_max` — Lua VM pool size (0 = default 64).
+    #[must_use]
     pub fn new(
         script_dir: &str,
         assets_base_url: &str,
@@ -58,7 +59,7 @@ impl ActivityGenerator {
         extra_info: &Option<String>,
     ) -> Activity {
         let image_url = format!("{}/{}/icon.png", self.assets_base_url, game_info.title_id);
-        debug!("Game icon URL: {}", image_url);
+        debug!("Game icon URL: {image_url}");
 
         // Build the default activity first
         let default_act = Activity::new()
@@ -68,28 +69,26 @@ impl ActivityGenerator {
             .set_state("Via 3ds-presence.top")
             .set_assets(Assets::new().set_large_image(&image_url));
 
-        let mut act = default_act.clone();
-
-        // If we have extra_info, try the Lua script runner
-        if let Some(extra) = extra_info {
-            if !extra.is_empty() {
-                if let Some(script_act) = self
+        // If we have extra_info, try the Lua script runner; otherwise use default
+        let mut act = if let Some(extra) = extra_info
+            && !extra.is_empty()
+                && let Some(script_act) = self
                     .script_runner
                     .call_script(&game_info.title_id, game_info, extra)
                     .await
                 {
                     // Merge: script values override defaults, but empty fields keep defaults
-                    act = merge_activities(&script_act, &default_act);
-                }
-            }
-        }
+                    merge_activities(&script_act, &default_act)
+                } else {
+                    default_act
+                };
 
         // Apply Mii overlay (small image) if available
         if let Some(mii) = &user_info.mii {
             let assets_with_mii = act
                 .assets()
                 .set_small_image(&format!("{}{}", self.mii_generator_server, mii))
-                .set_small_text(&user_info.mii_name.clone().unwrap_or("Unknown Mii".into()));
+                .set_small_text(&user_info.mii_name.clone().unwrap_or_else(|| "Unknown Mii".into()));
             debug!("Mii image URL: {}", assets_with_mii.small_image());
             act = act.set_assets(assets_with_mii);
         }

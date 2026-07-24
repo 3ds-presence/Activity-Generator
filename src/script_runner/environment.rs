@@ -31,22 +31,18 @@ pub fn inject_helpers(lua: &Lua) -> LuaResult<()> {
     // `get(key)` — get a value from extra_info or trigger a clean fallback.
     let get_fn = lua.create_function(|ctx, key: String| {
         let extra: Table = ctx.globals().get("extra_info")?;
-        match extra.get::<String>(key.clone()) {
-            Ok(val) => Ok(val),
-            Err(_) => Err(mlua::Error::runtime(format!(
+        extra.get::<String>(key.clone()).map_err(|_| {
+            mlua::Error::runtime(format!(
                 "{FALLBACK_SIGNAL}: missing required extra_info key '{key}'"
-            ))),
-        }
+            ))
+        })
     })?;
     lua.globals().set("get", get_fn)?;
 
     // `optional(key)` — get a value or return nil if the key is missing.
     let optional_fn = lua.create_function(|ctx, key: String| {
         let extra: Table = ctx.globals().get("extra_info")?;
-        match extra.get::<String>(key) {
-            Ok(val) => Ok(Some(val)),
-            Err(_) => Ok(None::<String>),
-        }
+        extra.get::<String>(key).map_or_else(|_| Ok(None::<String>), |val| Ok(Some(val)))
     })?;
     lua.globals().set("optional", optional_fn)?;
 
@@ -55,7 +51,7 @@ pub fn inject_helpers(lua: &Lua) -> LuaResult<()> {
     // is insufficient to build a custom presence.
     lua.globals().set(
         "fallback",
-        lua.create_function(|_lua, _: ()| -> Result<(), mlua::Error> {
+        lua.create_function(|_lua, (): ()| -> Result<(), mlua::Error> {
             Err(mlua::Error::runtime(format!(
                 "{FALLBACK_SIGNAL}: script called fallback()"
             )))
@@ -114,7 +110,7 @@ pub fn inject_game_info(lua: &Lua, game_info: &GameInfo) -> LuaResult<()> {
 /// Prepare the Lua VM with helpers and data. Returns `true` on success.
 pub fn prepare(lua: &Lua, game_info: &GameInfo, extra_info: &str) -> bool {
     inject_helpers(lua)
-        .and(inject_extra_info(lua, extra_info))
-        .and(inject_game_info(lua, game_info))
+        .and_then(|()| inject_extra_info(lua, extra_info))
+        .and_then(|()| inject_game_info(lua, game_info))
         .is_ok()
 }

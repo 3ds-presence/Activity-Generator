@@ -50,12 +50,9 @@ pub fn value_to_activity(value: Value, script_path: &Path) -> Option<Activity> {
 
 /// Extract Activity fields from a Lua table.
 fn table_to_activity(tbl: &Table) -> Option<Activity> {
-    let name: String = match tbl.get("name") {
-        Ok(n) => n,
-        Err(_) => {
-            warn!("Lua script returned a table without a 'name' field");
-            return None;
-        }
+    let name: String = if let Ok(n) = tbl.get("name") { n } else {
+        warn!("Lua script returned a table without a 'name' field");
+        return None;
     };
 
     let mut act = Activity::new().set_name(&name);
