@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -54,7 +53,11 @@ impl ScriptRunner {
     /// `script_dir` — directory containing `<title_id>.lua` scripts.
     /// `pool_max` — maximum Lua VMs to keep in the pool. Use 0 for default (64).
     pub fn new(script_dir: &str, pool_max: usize) -> Self {
-        let max = if pool_max > 0 { pool_max } else { DEFAULT_POOL_MAX };
+        let max = if pool_max > 0 {
+            pool_max
+        } else {
+            DEFAULT_POOL_MAX
+        };
         Self {
             script_dir: PathBuf::from(script_dir),
             pool: Arc::new(Mutex::new(Vec::with_capacity(max))),
@@ -83,9 +86,18 @@ impl ScriptRunner {
         let script_content_clone = script_content;
 
         // Run the Lua build in spawn_blocking (mlua is synchronous) with a timeout.
-        let result = tokio::time::timeout(LUA_TIMEOUT, tokio::task::spawn_blocking(move || {
-            executor_clone.run_build(&lua_clone, &script_content_clone, &game_info_clone, &extra_info_clone)
-        })).await;
+        let result = tokio::time::timeout(
+            LUA_TIMEOUT,
+            tokio::task::spawn_blocking(move || {
+                executor_clone.run_build(
+                    &lua_clone,
+                    &script_content_clone,
+                    &game_info_clone,
+                    &extra_info_clone,
+                )
+            }),
+        )
+        .await;
 
         match result {
             Ok(Ok(Some(activity))) => {
@@ -105,7 +117,11 @@ impl ScriptRunner {
             }
             Err(_) => {
                 // Timeout exceeded — discard the VM (may be stuck in an infinite loop)
-                warn!("Lua script timeout ({}ms) for {}", LUA_TIMEOUT.as_millis(), title_id);
+                warn!(
+                    "Lua script timeout ({}ms) for {}",
+                    LUA_TIMEOUT.as_millis(),
+                    title_id
+                );
                 None
             }
         }

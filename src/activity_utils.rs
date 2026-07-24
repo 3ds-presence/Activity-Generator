@@ -14,14 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use discord_social_rpc::Activity;
 
-use discord_social_rpc::{Activity};
-
-
-/// Merge a script-provided activity into the default one.
-///
-/// For each string field: if the script set it (non-empty), use the script value;
-/// otherwise keep the default value.
+/// Merge script activity into default: non-empty script fields win, else keep default.
 pub fn merge_activities(script: &Activity, default: &Activity) -> Activity {
     macro_rules! merge_field {
         ($act:ident, $method:ident, $script:expr, $default:expr) => {

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use discord_social_rpc::Activity;
 use log::{debug, warn};
@@ -34,7 +33,7 @@ pub struct Executor {
 
 impl Executor {
     /// Create a new executor for the given `title_id` in `script_dir`.
-    pub fn new(script_dir: &PathBuf, title_id: &str) -> Self {
+    pub fn new(script_dir: &Path, title_id: &str) -> Self {
         Self {
             script_path: script_dir.join(format!("{}.lua", title_id)),
         }
@@ -88,7 +87,11 @@ impl Executor {
                 if is_fallback_error(&e) {
                     debug!("Script {} requested fallback", self.script_path.display());
                 } else {
-                    warn!("Lua script {} execution error: {}", self.script_path.display(), e);
+                    warn!(
+                        "Lua script {} execution error: {}",
+                        self.script_path.display(),
+                        e
+                    );
                 }
                 false
             }
@@ -100,7 +103,11 @@ impl Executor {
         let build_fn: Function = match lua.globals().get("build") {
             Ok(f) => f,
             Err(e) => {
-                warn!("Lua script {} has no `build` function: {}", self.script_path.display(), e);
+                warn!(
+                    "Lua script {} has no `build` function: {}",
+                    self.script_path.display(),
+                    e
+                );
                 return None;
             }
         };
@@ -114,7 +121,11 @@ impl Executor {
                 if is_fallback_error(&e) {
                     debug!("Script {} requested fallback", self.script_path.display());
                 } else {
-                    warn!("Lua build() call failed for {}: {}", self.script_path.display(), e);
+                    warn!(
+                        "Lua build() call failed for {}: {}",
+                        self.script_path.display(),
+                        e
+                    );
                 }
                 None
             }

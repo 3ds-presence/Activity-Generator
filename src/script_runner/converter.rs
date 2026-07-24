@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-use std::path::PathBuf;
+use std::path::Path;
 
 use discord_social_rpc::{Activity, ActivityType, Assets, Timestamps};
 use log::{debug, warn};
 use mlua::{Table, Value};
 
 /// Convert a Lua value returned by `build()` into an `Activity`.
-pub fn value_to_activity(value: Value, script_path: &PathBuf) -> Option<Activity> {
+pub fn value_to_activity(value: Value, script_path: &Path) -> Option<Activity> {
     match value {
         Value::Table(tbl) => table_to_activity(&tbl).or_else(|| {
             warn!(
@@ -32,7 +31,10 @@ pub fn value_to_activity(value: Value, script_path: &PathBuf) -> Option<Activity
             None
         }),
         Value::Nil => {
-            debug!("Script {} returned nil, using fallback", script_path.display());
+            debug!(
+                "Script {} returned nil, using fallback",
+                script_path.display()
+            );
             None
         }
         other => {

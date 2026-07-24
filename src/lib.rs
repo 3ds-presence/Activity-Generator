@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 use discord_social_rpc::{Activity, ActivityType, Assets};
 
+mod activity_utils;
 pub mod info;
 mod script_runner;
-mod activity_utils;
 
+use activity_utils::merge_activities;
 pub use info::UserInfo;
 use log::debug;
 use script_runner::ScriptRunner;
-use activity_utils::merge_activities;
 
 pub struct ActivityGenerator {
     script_runner: ScriptRunner,
@@ -34,18 +33,10 @@ pub struct ActivityGenerator {
 }
 
 impl ActivityGenerator {
-    /// Create a new `ActivityGenerator`
-    ///
-    /// `script_dir` is the directory containing game scripts (`<title_id>.lua`).
-    ///
-    /// `assets_base_url` is the base URL for game icons, e.g.
-    /// `"http://localhost:8080/imgs/"`. The final image URL will be
-    /// `{assets_base_url}{title_id}/icon.png`.
-    ///
-    /// `mii_generator_server` is the URL of the Mii generator server, e.g.
-    /// `"http://localhost:8080/miis/"`.
-    ///
-    /// `lua_pool_max` — maximum number of Lua VMs to keep in the pool (0 = default 64).
+    /// `script_dir` — directory with `<title_id>.lua` scripts.
+    /// `assets_base_url` — base URL for `{title_id}/icon.png`.
+    /// `mii_generator_server` — base URL for Mii images.
+    /// `lua_pool_max` — Lua VM pool size (0 = default 64).
     pub fn new(
         script_dir: &str,
         assets_base_url: &str,
@@ -59,11 +50,7 @@ impl ActivityGenerator {
         }
     }
 
-    /// Build a Discord `Activity` for the given `title_id`.
-    ///
-    /// If `extra_info` is present and a matching Lua script exists in `script_dir`,
-    /// the script is executed to generate a custom activity.
-    /// Otherwise a fallback activity is returned.
+    /// Build a Discord Activity for the given game. Runs a Lua script if `extra_info` is set.
     pub async fn build_activity(
         &self,
         user_info: &info::UserInfo,

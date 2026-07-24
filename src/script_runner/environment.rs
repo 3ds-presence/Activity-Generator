@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 use mlua::{Lua, Nil, Result as LuaResult, Table};
 
 use crate::info::GameInfo;
@@ -71,9 +70,7 @@ pub fn inject_helpers(lua: &Lua) -> LuaResult<()> {
     // Example: hex_to_num(get("004FE6E0")) or hex_to_num("1C") → 28.
     let hex_to_num_fn = lua.create_function(|_ctx, hex_str: String| {
         let num = i64::from_str_radix(&hex_str, 16).map_err(|e| {
-            mlua::Error::runtime(format!(
-                "__FALLBACK__: invalid hex value '{hex_str}': {e}"
-            ))
+            mlua::Error::runtime(format!("__FALLBACK__: invalid hex value '{hex_str}': {e}"))
         })?;
         Ok(num)
     })?;
