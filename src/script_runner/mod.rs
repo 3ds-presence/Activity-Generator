@@ -65,6 +65,37 @@ impl ScriptRunner {
         }
     }
 
+    /// Handle the result of a script execution.
+    async fn handle_script_result(
+        &self,
+        lua: Lua,
+        title_id: &str,
+        result: Result<Result<Option<Activity>, tokio::task::JoinError>, tokio::time::error::Elapsed>,
+    ) -> Option<Activity> {
+        match result {
+            Ok(Ok(Some(activity))) => {
+                self.recycle(lua).await;
+                Some(activity)
+            }
+            Ok(Ok(None)) => {
+                self.recycle(lua).await;
+                None
+            }
+            Ok(Err(err)) => {
+                warn!("Lua spawn_blocking panicked for {title_id}: {err:?}");
+                None
+            }
+            Err(_) => {
+                warn!(
+                    "Lua script timeout ({}ms) for {}",
+                    LUA_TIMEOUT.as_millis(),
+                    title_id
+                );
+                None
+            }
+        }
+    }
+
     /// Run the Lua script for `title_id` and return an `Activity`.
     ///
     /// Returns `None` if the script does not exist, fails, triggers fallback,
@@ -85,7 +116,6 @@ impl ScriptRunner {
         let extra_info_clone = extra_info.to_string();
         let script_content_clone = script_content;
 
-        // Run the Lua build in spawn_blocking (mlua is synchronous) with a timeout.
         let result = tokio::time::timeout(
             LUA_TIMEOUT,
             tokio::task::spawn_blocking(move || {
@@ -99,32 +129,7 @@ impl ScriptRunner {
         )
         .await;
 
-        match result {
-            Ok(Ok(Some(activity))) => {
-                // Success — recycle the VM and return the activity
-                self.recycle(lua).await;
-                Some(activity)
-            }
-            Ok(Ok(None)) => {
-                // Script returned nil or fallback — recycle the VM
-                self.recycle(lua).await;
-                None
-            }
-            Ok(Err(err)) => {
-                // spawn_blocking panicked — log and discard the VM (may be in a bad state)
-                warn!("Lua spawn_blocking panicked for {title_id}: {err:?}");
-                None
-            }
-            Err(_) => {
-                // Timeout exceeded — discard the VM (may be stuck in an infinite loop)
-                warn!(
-                    "Lua script timeout ({}ms) for {}",
-                    LUA_TIMEOUT.as_millis(),
-                    title_id
-                );
-                None
-            }
-        }
+        self.handle_script_result(lua, title_id, result).await
     }
 
     /// Acquire a Lua VM from the pool, or create a fresh one with a whitelist

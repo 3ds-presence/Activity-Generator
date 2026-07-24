@@ -79,20 +79,25 @@ impl Executor {
         converter::value_to_activity(value, &self.script_path)
     }
 
+    /// Log a script error, silently if it's a fallback request.
+    fn log_script_error(&self, stage: &str, e: &mlua::Error) {
+        if is_fallback_error(e) {
+            debug!("Script {} requested fallback in {stage}", self.script_path.display());
+        } else {
+            warn!(
+                "Lua script {} {stage} error: {}",
+                self.script_path.display(),
+                e
+            );
+        }
+    }
+
     /// Load and execute the script content. Returns `true` on success.
     fn load_script(&self, lua: &Lua, script_content: &str) -> bool {
         match lua.load(script_content).exec() {
             Ok(()) => true,
             Err(e) => {
-                if is_fallback_error(&e) {
-                    debug!("Script {} requested fallback", self.script_path.display());
-                } else {
-                    warn!(
-                        "Lua script {} execution error: {}",
-                        self.script_path.display(),
-                        e
-                    );
-                }
+                self.log_script_error("execution", &e);
                 false
             }
         }
@@ -118,15 +123,7 @@ impl Executor {
         match build_fn.call::<Value>((game_table, extra_table)) {
             Ok(val) => Some(val),
             Err(e) => {
-                if is_fallback_error(&e) {
-                    debug!("Script {} requested fallback", self.script_path.display());
-                } else {
-                    warn!(
-                        "Lua build() call failed for {}: {}",
-                        self.script_path.display(),
-                        e
-                    );
-                }
+                self.log_script_error("build()", &e);
                 None
             }
         }
