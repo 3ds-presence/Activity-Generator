@@ -92,7 +92,7 @@ pub fn inject_extra_info(lua: &Lua, extra_info: &str) -> LuaResult<()> {
             table.set(pair.to_string(), String::new())?;
         }
     }
-
+    log::debug!("Lua extra_info table: {table:#?}");
     lua.globals().set("extra_info", table)?;
     Ok(())
 }

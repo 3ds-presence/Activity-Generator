@@ -36,16 +36,14 @@ impl ActivityGenerator {
     /// `script_dir` — directory with `<title_id>.lua` scripts.
     /// `assets_base_url` — base URL for `{title_id}/icon.png`.
     /// `mii_generator_server` — base URL for Mii images.
-    /// `lua_pool_max` — Lua VM pool size (0 = default 64).
     #[must_use]
     pub fn new(
         script_dir: &str,
         assets_base_url: &str,
         mii_generator_server: &str,
-        lua_pool_max: usize,
     ) -> Self {
         Self {
-            script_runner: ScriptRunner::new(script_dir, lua_pool_max),
+            script_runner: ScriptRunner::new(script_dir),
             assets_base_url: assets_base_url.trim_end_matches('/').to_string(),
             mii_generator_server: mii_generator_server.trim_end_matches('/').to_string(),
         }

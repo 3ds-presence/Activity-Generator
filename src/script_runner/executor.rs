@@ -70,6 +70,10 @@ impl Executor {
         extra_info: &str,
     ) -> Option<Activity> {
         if !environment::prepare(lua, game_info, extra_info) {
+            warn!(
+                "Script {} prepare() failed — environment not set up",
+                self.script_path.display()
+            );
             return None;
         }
         if !self.load_script(lua, script_content) {

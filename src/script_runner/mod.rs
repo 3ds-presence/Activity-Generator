@@ -15,13 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 use discord_social_rpc::Activity;
 use log::{debug, warn};
 use mlua::{Lua, LuaOptions, StdLib};
-use tokio::sync::Mutex;
 
 use crate::info::GameInfo;
 
@@ -31,68 +29,24 @@ mod executor;
 
 use executor::Executor;
 
-/// Default maximum number of Lua VMs in the pool.
-const DEFAULT_POOL_MAX: usize = 64;
-
 /// Maximum execution time for a single Lua script (500 ms).
 const LUA_TIMEOUT: Duration = Duration::from_millis(500);
 
-/// Pool of Lua VMs for executing game-specific activity scripts.
+/// Executes game-specific activity scripts.
 ///
-/// VMs are recycled after use (globals cleared) to prevent memory leaks.
-/// Capped at `max_pool`; creates temporary VMs when the pool is empty.
+/// A fresh Lua VM is created for every script invocation, then dropped
+/// automatically — no pooling, no recycling bugs.
 pub struct ScriptRunner {
     script_dir: PathBuf,
-    pool: Arc<Mutex<Vec<Lua>>>,
-    max_pool: usize,
 }
 
 impl ScriptRunner {
     /// Create a new `ScriptRunner`.
     ///
     /// `script_dir` — directory containing `<title_id>.lua` scripts.
-    /// `pool_max` — maximum Lua VMs to keep in the pool. Use 0 for default (64).
-    pub fn new(script_dir: &str, pool_max: usize) -> Self {
-        let max = if pool_max > 0 {
-            pool_max
-        } else {
-            DEFAULT_POOL_MAX
-        };
+    pub fn new(script_dir: &str) -> Self {
         Self {
             script_dir: PathBuf::from(script_dir),
-            pool: Arc::new(Mutex::new(Vec::with_capacity(max))),
-            max_pool: max,
-        }
-    }
-
-    /// Handle the result of a script execution.
-    async fn handle_script_result(
-        &self,
-        lua: Lua,
-        title_id: &str,
-        result: Result<Result<Option<Activity>, tokio::task::JoinError>, tokio::time::error::Elapsed>,
-    ) -> Option<Activity> {
-        match result {
-            Ok(Ok(Some(activity))) => {
-                self.recycle(lua).await;
-                Some(activity)
-            }
-            Ok(Ok(None)) => {
-                self.recycle(lua).await;
-                None
-            }
-            Ok(Err(err)) => {
-                warn!("Lua spawn_blocking panicked for {title_id}: {err:?}");
-                None
-            }
-            Err(_) => {
-                warn!(
-                    "Lua script timeout ({}ms) for {}",
-                    LUA_TIMEOUT.as_millis(),
-                    title_id
-                );
-                None
-            }
         }
     }
 
@@ -109,57 +63,44 @@ impl ScriptRunner {
         let executor = Executor::new(&self.script_dir, title_id);
         let script_content = executor.read_script()?;
 
-        let lua = self.acquire().await;
-        let lua_clone = lua.clone();
-        let executor_clone = executor;
+        let lua = Self::acquire();
+        let script_content_clone = script_content;
         let game_info_clone = game_info.clone();
         let extra_info_clone = extra_info.to_string();
-        let script_content_clone = script_content;
 
         let result = tokio::time::timeout(
             LUA_TIMEOUT,
             tokio::task::spawn_blocking(move || {
-                executor_clone.run_build(
-                    &lua_clone,
-                    &script_content_clone,
-                    &game_info_clone,
-                    &extra_info_clone,
-                )
+                executor.run_build(&lua, &script_content_clone, &game_info_clone, &extra_info_clone)
             }),
         )
         .await;
 
-        self.handle_script_result(lua, title_id, result).await
+        match result {
+            Ok(Ok(Some(activity))) => Some(activity),
+            Ok(Ok(None)) => None,
+            Ok(Err(err)) => {
+                warn!("Lua spawn_blocking panicked for {title_id}: {err:?}");
+                None
+            }
+            Err(_) => {
+                warn!(
+                    "Lua script timeout ({}ms) for {}",
+                    LUA_TIMEOUT.as_millis(),
+                    title_id
+                );
+                None
+            }
+        }
     }
 
-    /// Acquire a Lua VM from the pool, or create a fresh one with a whitelist
-    /// of safe standard libraries.
-    async fn acquire(&self) -> Lua {
-        let mut pool = self.pool.lock().await;
-        pool.pop().map_or_else(
-            || {
-                debug!("Creating new Lua VM (pool empty)");
-                Lua::new_with(
-                    StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::COROUTINE | StdLib::UTF8,
-                    LuaOptions::default(),
-                )
-                .expect("Failed to create sandboxed Lua VM")
-            },
-            |state| {
-                debug!("Reusing Lua VM from pool ({} remaining)", pool.len());
-                state
-            },
+    /// Create a fresh sandboxed Lua VM.
+    fn acquire() -> Lua {
+        debug!("Creating new Lua VM");
+        Lua::new_with(
+            StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::COROUTINE | StdLib::UTF8,
+            LuaOptions::default(),
         )
-    }
-
-    /// Reset globals and return a Lua VM to the pool.
-    async fn recycle(&self, lua: Lua) {
-        if let Err(e) = lua.globals().clear() {
-            log::warn!("Failed to clear Lua globals: {e}");
-        }
-        let mut pool = self.pool.lock().await;
-        if pool.len() < self.max_pool {
-            pool.push(lua);
-        }
+        .expect("Failed to create sandboxed Lua VM")
     }
 }
