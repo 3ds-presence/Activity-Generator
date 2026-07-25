@@ -47,6 +47,9 @@ local songs = {
     [55]  = "Piano✕Forte✕Scandal",
     [15]  = "Kimi no Taion",
     [44]  = "glow",
+    [76]  = "Nice to Meet You, Mr. Earthling",
+    [1]   = "Watashi no jikan",
+    [51]  = "shake it !",
 }
 
 -- Difficulty mapping (key = decimal from hex_to_num on 004FE704)
