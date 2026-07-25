@@ -37,15 +37,19 @@ impl ActivityGenerator {
     /// `assets_base_url` — base URL for `{title_id}/icon.png`.
     /// `mii_generator_server` — base URL for Mii images.
     #[must_use]
-    pub fn new(
-        script_dir: &str,
-        assets_base_url: &str,
-        mii_generator_server: &str,
-    ) -> Self {
+    pub fn new(script_dir: &str, assets_base_url: &str, mii_generator_server: &str) -> Self {
         Self {
             script_runner: ScriptRunner::new(script_dir),
             assets_base_url: assets_base_url.trim_end_matches('/').to_string(),
             mii_generator_server: mii_generator_server.trim_end_matches('/').to_string(),
+        }
+    }
+
+    fn get_image_url(&self, title_id: &str) -> String {
+        if title_id == "0000000000000000" {
+            String::from("mp:home_menu")
+        } else {
+            format!("{}/{}/icon.png", self.assets_base_url, title_id)
         }
     }
 
@@ -56,7 +60,7 @@ impl ActivityGenerator {
         game_info: &info::GameInfo,
         extra_info: &Option<String>,
     ) -> Activity {
-        let image_url = format!("{}/{}/icon.png", self.assets_base_url, game_info.title_id);
+        let image_url = self.get_image_url(&game_info.title_id);
         debug!("Game icon URL: {image_url}");
 
         // Build the default activity first
@@ -70,23 +74,30 @@ impl ActivityGenerator {
         // If we have extra_info, try the Lua script runner; otherwise use default
         let mut act = if let Some(extra) = extra_info
             && !extra.is_empty()
-                && let Some(script_act) = self
-                    .script_runner
-                    .call_script(&game_info.title_id, game_info, extra)
-                    .await
-                {
-                    // Merge: script values override defaults, but empty fields keep defaults
-                    merge_activities(&script_act, &default_act)
-                } else {
-                    default_act
-                };
+            && let Some(script_act) = self
+                .script_runner
+                .call_script(&game_info.title_id, game_info, extra)
+                .await
+        {
+            // Merge: script values override defaults, but empty fields keep defaults
+            merge_activities(&script_act, &default_act)
+        } else {
+            default_act
+        };
 
-        // Apply Mii overlay (small image) if available
-        if let Some(mii) = &user_info.mii {
+        // Apply Mii overlay (small image) if available and non-empty
+        if let Some(mii) = &user_info.mii
+            && !mii.is_empty()
+        {
             let assets_with_mii = act
                 .assets()
                 .set_small_image(&format!("{}{}", self.mii_generator_server, mii))
-                .set_small_text(&user_info.mii_name.clone().unwrap_or_else(|| "Unknown Mii".into()));
+                .set_small_text(
+                    &user_info
+                        .mii_name
+                        .clone()
+                        .unwrap_or_else(|| "Unknown Mii".into()),
+                );
             debug!("Mii image URL: {}", assets_with_mii.small_image());
             act = act.set_assets(assets_with_mii);
         }
