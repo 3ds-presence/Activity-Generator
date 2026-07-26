@@ -47,7 +47,7 @@ impl ActivityGenerator {
 
     fn get_image_url(&self, title_id: &str) -> String {
         if title_id == "0000000000000000" {
-            String::from("mp:home_menu")
+            format!("{}/specials/home_menu.png", self.assets_base_url)
         } else {
             format!("{}/{}/icon.png", self.assets_base_url, title_id)
         }
