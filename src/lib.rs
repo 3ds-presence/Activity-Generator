@@ -15,14 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use discord_social_rpc::{Activity, ActivityType, Assets};
+use log::debug;
 
 mod activity_utils;
+pub mod available_titles;
 pub mod info;
 mod script_runner;
 
 use activity_utils::merge_activities;
+use available_titles::AvailableTitles;
 pub use info::UserInfo;
-use log::debug;
 use script_runner::ScriptRunner;
 
 pub struct ActivityGenerator {
@@ -30,26 +32,40 @@ pub struct ActivityGenerator {
 
     assets_base_url: String,
     mii_generator_server: String,
+    available_titles: AvailableTitles,
 }
 
 impl ActivityGenerator {
+    /// Create a new `ActivityGenerator`.
+    ///
     /// `script_dir` — directory with `<title_id>.lua` scripts.
-    /// `assets_base_url` — base URL for `{title_id}/icon.png`.
+    /// `assets_base_url` — base URL for game icon images.
     /// `mii_generator_server` — base URL for Mii images.
+    ///
+    /// On construction, this fetches `{assets_base_url}/available_titles.json`
+    /// to know which title IDs have icons. If the fetch fails, a warning is logged
+    /// and every title will get the fallback `3ds_logo.png`.
     #[must_use]
-    pub fn new(script_dir: &str, assets_base_url: &str, mii_generator_server: &str) -> Self {
+    pub async fn new(
+        script_dir: &str,
+        assets_base_url: &str,
+        mii_generator_server: &str,
+    ) -> Self {
         Self {
             script_runner: ScriptRunner::new(script_dir),
             assets_base_url: assets_base_url.trim_end_matches('/').to_string(),
             mii_generator_server: mii_generator_server.trim_end_matches('/').to_string(),
+            available_titles: AvailableTitles::load(assets_base_url).await,
         }
     }
 
     fn get_image_url(&self, title_id: &str) -> String {
         if title_id == "0000000000000000" {
             format!("{}/specials/home_menu.png", self.assets_base_url)
-        } else {
+        } else if self.available_titles.contains(title_id) {
             format!("{}/{}/icon.png", self.assets_base_url, title_id)
+        } else {
+            format!("{}/specials/3ds_logo.png", self.assets_base_url)
         }
     }
 
