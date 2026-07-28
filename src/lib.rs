@@ -84,7 +84,7 @@ impl ActivityGenerator {
             .set_name(&game_info.name)
             .set_activity_type(ActivityType::Playing)
             .set_details(&game_info.publisher)
-            .set_state("Via 3ds-presence.top")
+            .set_state("Via 3ds-presence.top") // Credit to the project, please don't remove it as part of the AGPL license
             .set_assets(Assets::new().set_large_image(&image_url));
 
         // If we have extra_info, try the Lua script runner; otherwise use default
@@ -104,6 +104,7 @@ impl ActivityGenerator {
         // Apply Mii overlay (small image) if available and non-empty
         if let Some(mii) = &user_info.mii
             && !mii.is_empty()
+            && act.assets().small_image().is_empty()
         {
             let assets_with_mii = act
                 .assets()
