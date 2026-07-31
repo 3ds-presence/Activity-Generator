@@ -18,13 +18,24 @@ use std::path::{Path, PathBuf};
 
 use discord_social_rpc::Activity;
 use log::{debug, warn};
-use mlua::{Function, Lua, Value};
+use mlua::{Function, HookTriggers, Lua, Value};
 
 use crate::info::GameInfo;
 
 use super::converter;
 use super::environment;
 use super::environment::is_fallback_error;
+
+/// Max VM instructions per script. The 500ms timeout cannot interrupt spawn_blocking,
+/// so this hook (fires once at the limit) is the real guard against infinite loops.
+const LUA_INSTRUCTION_LIMIT: u32 = 2_000_000;
+
+fn install_instruction_hook(lua: &Lua) -> mlua::Result<()> {
+    lua.set_hook(
+        HookTriggers::new().every_nth_instruction(LUA_INSTRUCTION_LIMIT),
+        |_lua, _debug| Err(mlua::Error::runtime("script instruction limit exceeded")),
+    )
+}
 
 /// Handles the full lifecycle of a single script execution.
 pub struct Executor {
@@ -76,6 +87,17 @@ impl Executor {
             );
             return None;
         }
+
+        // Install an instruction-count hook so an infinite loop (e.g. `while true`) is
+        // stopped even though tokio::time::timeout cannot interrupt spawn_blocking.
+        if let Err(e) = install_instruction_hook(lua) {
+            warn!(
+                "Script {} failed to install instruction hook: {e}",
+                self.script_path.display()
+            );
+            return None;
+        }
+
         if !self.load_script(lua, script_content) {
             return None;
         }
