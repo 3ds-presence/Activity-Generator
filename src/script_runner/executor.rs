@@ -26,7 +26,7 @@ use super::converter;
 use super::environment;
 use super::environment::is_fallback_error;
 
-/// Max VM instructions per script. The 500ms timeout cannot interrupt spawn_blocking,
+/// Max VM instructions per script. The 500ms timeout cannot interrupt `spawn_blocking`,
 /// so this hook (fires once at the limit) is the real guard against infinite loops.
 const LUA_INSTRUCTION_LIMIT: u32 = 2_000_000;
 
@@ -59,14 +59,20 @@ impl Executor {
         let canonical_base = std::fs::canonicalize(script_dir).ok()?;
         let canonical_path = std::fs::canonicalize(&self.script_path).ok()?;
         if !canonical_path.starts_with(&canonical_base) {
-            warn!("Path traversal attempt blocked: {}", self.script_path.display());
+            warn!(
+                "evt=lua_path_traversal_blocked path={}",
+                self.script_path.display()
+            );
             return None;
         }
 
         match std::fs::read_to_string(&self.script_path) {
             Ok(c) => Some(c),
             Err(e) => {
-                warn!("Failed to read Lua script {}: {}", self.script_path.display(), e);
+                warn!(
+                    "evt=lua_script_read_failed path={} error={e}",
+                    self.script_path.display()
+                );
                 None
             }
         }
@@ -82,7 +88,7 @@ impl Executor {
     ) -> Option<Activity> {
         if !environment::prepare(lua, game_info, extra_info) {
             warn!(
-                "Script {} prepare() failed — environment not set up",
+                "evt=lua_prepare_failed path={}",
                 self.script_path.display()
             );
             return None;
@@ -92,7 +98,7 @@ impl Executor {
         // stopped even though tokio::time::timeout cannot interrupt spawn_blocking.
         if let Err(e) = install_instruction_hook(lua) {
             warn!(
-                "Script {} failed to install instruction hook: {e}",
+                "evt=lua_hook_install_failed path={} error={e}",
                 self.script_path.display()
             );
             return None;
@@ -108,10 +114,13 @@ impl Executor {
     /// Log a script error, silently if it's a fallback request.
     fn log_script_error(&self, stage: &str, e: &mlua::Error) {
         if is_fallback_error(e) {
-            debug!("Script {} requested fallback in {stage}", self.script_path.display());
+            debug!(
+                "evt=lua_fallback_requested path={} stage={stage}",
+                self.script_path.display()
+            );
         } else {
             warn!(
-                "Lua script {} {stage} error: {}",
+                "evt=lua_script_error path={} stage={stage} error={}",
                 self.script_path.display(),
                 e
             );
@@ -135,9 +144,8 @@ impl Executor {
             Ok(f) => f,
             Err(e) => {
                 warn!(
-                    "Lua script {} has no `build` function: {}",
-                    self.script_path.display(),
-                    e
+                    "evt=lua_build_missing path={} error={e}",
+                    self.script_path.display()
                 );
                 return None;
             }

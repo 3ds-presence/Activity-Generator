@@ -77,7 +77,7 @@ impl ActivityGenerator {
         extra_info: &Option<String>,
     ) -> Activity {
         let image_url = self.get_image_url(&game_info.title_id);
-        debug!("Game icon URL: {image_url}");
+        debug!("evt=activity_icon_url url={image_url}");
 
         // Build the default activity first
         let default_act = Activity::new()
@@ -115,7 +115,7 @@ impl ActivityGenerator {
                         .clone()
                         .unwrap_or_else(|| "Unknown Mii".into()),
                 );
-            debug!("Mii image URL: {}", assets_with_mii.small_image());
+            debug!("evt=activity_mii_url url={}", assets_with_mii.small_image());
             act = act.set_assets(assets_with_mii);
         }
 

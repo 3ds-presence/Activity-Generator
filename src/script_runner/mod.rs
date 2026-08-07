@@ -80,14 +80,13 @@ impl ScriptRunner {
             Ok(Ok(Some(activity))) => Some(activity),
             Ok(Ok(None)) => None,
             Ok(Err(err)) => {
-                warn!("Lua spawn_blocking panicked for {title_id}: {err:?}");
+                warn!("evt=lua_script_panicked title_id={title_id} error={err:?}");
                 None
             }
             Err(_) => {
                 warn!(
-                    "Lua script timeout ({}ms) for {}",
-                    LUA_TIMEOUT.as_millis(),
-                    title_id
+                    "evt=lua_script_timeout title_id={title_id} timeout_ms={}",
+                    LUA_TIMEOUT.as_millis()
                 );
                 None
             }
@@ -96,7 +95,7 @@ impl ScriptRunner {
 
     /// Create a fresh sandboxed Lua VM.
     fn acquire() -> Lua {
-        debug!("Creating new Lua VM");
+        debug!("evt=lua_vm_created");
         Lua::new_with(
             StdLib::TABLE | StdLib::STRING | StdLib::MATH | StdLib::COROUTINE | StdLib::UTF8,
             LuaOptions::default(),

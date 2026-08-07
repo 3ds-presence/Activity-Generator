@@ -39,12 +39,12 @@ impl AvailableTitles {
 
         match Self::fetch(&url).await {
             Ok(titles) => {
-                debug!("Loaded {} available title IDs from {url}", titles.len());
+                debug!("evt=available_titles_loaded count={} url={url}", titles.len());
                 Self { titles }
             }
             Err(e) => {
                 warn!(
-                    "Failed to fetch available titles from {url}: {e}. \
+                    "evt=available_titles_fetch_failed url={url} error={e}. \
                      All titles will use the fallback 3ds_logo.png icon."
                 );
                 Self {

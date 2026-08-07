@@ -25,21 +25,21 @@ pub fn value_to_activity(value: Value, script_path: &Path) -> Option<Activity> {
     match value {
         Value::Table(tbl) => table_to_activity(&tbl).or_else(|| {
             warn!(
-                "Script {} returned a table but could not convert to Activity",
+                "evt=lua_convert_table_failed path={}",
                 script_path.display()
             );
             None
         }),
         Value::Nil => {
             debug!(
-                "Script {} returned nil, using fallback",
+                "evt=lua_returned_nil path={}",
                 script_path.display()
             );
             None
         }
         other => {
             warn!(
-                "Script {} returned unexpected type {:?}, using fallback",
+                "evt=lua_unexpected_type path={} type={:?}",
                 script_path.display(),
                 other.type_name()
             );
@@ -51,7 +51,7 @@ pub fn value_to_activity(value: Value, script_path: &Path) -> Option<Activity> {
 /// Extract Activity fields from a Lua table.
 fn table_to_activity(tbl: &Table) -> Option<Activity> {
     let name: String = if let Ok(n) = tbl.get("name") { n } else {
-        warn!("Lua script returned a table without a 'name' field");
+        warn!("evt=lua_missing_name_field");
         return None;
     };
 
