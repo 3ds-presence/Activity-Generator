@@ -108,7 +108,7 @@ impl ActivityGenerator {
         {
             let assets_with_mii = act
                 .assets()
-                .set_small_image(&format!("{}{}", self.mii_generator_server, mii))
+                .set_small_image(&format!("{}/{}", self.mii_generator_server, mii))
                 .set_small_text(
                     &user_info
                         .mii_name
