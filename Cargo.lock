@@ -217,9 +217,9 @@ dependencies = [
 
 [[package]]
 name = "discord_social_rpc"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1469fa9447f944c5b0075b973b8af2a235513f97982c804ebef481d76774dc3e"
+checksum = "2705bc0b98742f82d2b21cf283d9e4e30194ba98d4fbb7eb5f0809493ea7e6d8"
 dependencies = [
  "futures-util",
  "log",

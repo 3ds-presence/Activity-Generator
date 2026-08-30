@@ -20,14 +20,17 @@ use log::debug;
 mod activity_utils;
 pub mod available_titles;
 pub mod info;
+mod script_reader;
 mod script_runner;
 
 use activity_utils::merge_activities;
 use available_titles::AvailableTitles;
 pub use info::UserInfo;
+use script_reader::ScriptReader;
 use script_runner::ScriptRunner;
 
 pub struct ActivityGenerator {
+    script_reader: ScriptReader,
     script_runner: ScriptRunner,
 
     assets_base_url: String,
@@ -38,7 +41,7 @@ pub struct ActivityGenerator {
 impl ActivityGenerator {
     /// Create a new `ActivityGenerator`.
     ///
-    /// `script_dir` — directory with `<title_id>.lua` scripts.
+    /// `script_dir` — directory with `<title_id>/script.lua` scripts.
     /// `assets_base_url` — base URL for game icon images.
     /// `mii_generator_server` — base URL for Mii images.
     ///
@@ -52,7 +55,8 @@ impl ActivityGenerator {
         mii_generator_server: &str,
     ) -> Self {
         Self {
-            script_runner: ScriptRunner::new(script_dir),
+            script_reader: ScriptReader::new(script_dir),
+            script_runner: ScriptRunner::new(),
             assets_base_url: assets_base_url.trim_end_matches('/').to_string(),
             mii_generator_server: mii_generator_server.trim_end_matches('/').to_string(),
             available_titles: AvailableTitles::load(assets_base_url).await,
@@ -92,7 +96,7 @@ impl ActivityGenerator {
             && !extra.is_empty()
             && let Some(script_act) = self
                 .script_runner
-                .call_script(&game_info.title_id, game_info, extra)
+                .call_script(&self.script_reader, &game_info.title_id, game_info, extra)
                 .await
         {
             // Merge: script values override defaults, but empty fields keep defaults
@@ -120,5 +124,13 @@ impl ActivityGenerator {
         }
 
         act
+    }
+
+    /// Read the addresses file (`<title_id>/code.txt`) for `title_id`.
+    ///
+    /// Returns the raw text, or `None` if the file does not exist or is unreadable.
+    #[must_use]
+    pub fn get_3ds_code(&self, title_id: &str) -> Option<String> {
+        self.script_reader.read_3ds_script(title_id)
     }
 }

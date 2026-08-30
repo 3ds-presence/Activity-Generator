@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::PathBuf;
 use std::time::Duration;
 
 use discord_social_rpc::Activity;
@@ -22,6 +21,7 @@ use log::{debug, warn};
 use mlua::{Lua, LuaOptions, StdLib};
 
 use crate::info::GameInfo;
+use crate::script_reader::ScriptReader;
 
 mod converter;
 mod environment;
@@ -36,32 +36,29 @@ const LUA_TIMEOUT: Duration = Duration::from_millis(500);
 ///
 /// A fresh Lua VM is created for every script invocation, then dropped
 /// automatically — no pooling, no recycling bugs.
-pub struct ScriptRunner {
-    script_dir: PathBuf,
-}
+pub struct ScriptRunner;
 
 impl ScriptRunner {
     /// Create a new `ScriptRunner`.
-    ///
-    /// `script_dir` — directory containing `<title_id>.lua` scripts.
-    pub fn new(script_dir: &str) -> Self {
-        Self {
-            script_dir: PathBuf::from(script_dir),
-        }
+    pub const fn new() -> Self {
+        Self
     }
 
     /// Run the Lua script for `title_id` and return an `Activity`.
+    ///
+    /// `script_dir` — directory containing `<title_id>/script.lua` scripts.
     ///
     /// Returns `None` if the script does not exist, fails, triggers fallback,
     /// or exceeds the 500ms timeout.
     pub async fn call_script(
         &self,
+        script_reader: &ScriptReader,
         title_id: &str,
         game_info: &GameInfo,
         extra_info: &str,
     ) -> Option<Activity> {
-        let executor = Executor::new(&self.script_dir, title_id);
-        let script_content = executor.read_script()?;
+        let script_content = script_reader.read_lua_script(title_id)?;
+        let executor = Executor::new(script_reader.dir(), title_id);
 
         let lua = Self::acquire();
         let script_content_clone = script_content;

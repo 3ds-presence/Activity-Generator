@@ -46,35 +46,7 @@ impl Executor {
     /// Create a new executor for the given `title_id` in `script_dir`.
     pub fn new(script_dir: &Path, title_id: &str) -> Self {
         Self {
-            script_path: script_dir.join(format!("{title_id}.lua")),
-        }
-    }
-
-    /// Read the script file from disk. Returns `None` if not found, unreadable, or
-    /// if the path is a path traversal attempt (resolves outside the script directory).
-    pub fn read_script(&self) -> Option<String> {
-        // Anti-path-traversal: canonicalize resolves the real path following symlinks.
-        // If the resolved path doesn't start with the intended script directory, block it.
-        let script_dir = self.script_path.parent()?;
-        let canonical_base = std::fs::canonicalize(script_dir).ok()?;
-        let canonical_path = std::fs::canonicalize(&self.script_path).ok()?;
-        if !canonical_path.starts_with(&canonical_base) {
-            warn!(
-                "evt=lua_path_traversal_blocked path={}",
-                self.script_path.display()
-            );
-            return None;
-        }
-
-        match std::fs::read_to_string(&self.script_path) {
-            Ok(c) => Some(c),
-            Err(e) => {
-                warn!(
-                    "evt=lua_script_read_failed path={} error={e}",
-                    self.script_path.display()
-                );
-                None
-            }
+            script_path: script_dir.join(format!("{title_id}/script.lua")),
         }
     }
 
