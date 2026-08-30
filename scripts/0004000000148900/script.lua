@@ -1,4 +1,4 @@
--- Script for Hatsune Miku Project Mirai DX (Europe)
+-- Script for Hatsune Miku Project Mirai DX (Europe & USA)
 
 -- Song/level mapping (key = decimal, result of hex_to_num(get("006098E0")))
 local songs = {
