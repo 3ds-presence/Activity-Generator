@@ -18,12 +18,25 @@ Following games have custom scripts to generate advanced activities:
 ### Scripts guide
 The script process is divided into 2 parts: the 3DS side and the backend side. The 3DS side is responsible for sending the extra data to the backend, and the backend side is responsible for generating the activity based on that extra data. Both sides are required 
 
-For the 3DS side, please check the [RPC Addon repo](https://github.com/3ds-presence/RPC-AddOn).
-
 You can see some examples of scripts in the `scripts` folder.
 
-#### Create script
-Scripts are named `<titleid>.lua` and are stored in the `scripts` folder. Each script must have a `build(game_info, extra_info)` function that returns a table representing the Discord Activity.
+#### Create 3DS script
+The 3DS side is really simple, you just need to create a file named `<titleid>/code.txt` in the `scripts` folder. The file must contain the RAM addresses of the values you want to send to the backend, followed by the length (b = byte (8 bits), h = halfword (16 bits), w = word (32 bits)), separated by commas
+
+Only the stack is supported to create add-ons, since the heap is too random (maybe supported in the future by using pointers ???).
+
+##### Example
+```
+006098E0b,004FE704b,004EF580b
+``` 
+will send the values at the RAM addresses `0x006098E0`, `0x004FE704` and `0x004EF580` as bytes to the backend.
+
+##### Find RAM addresses
+This is the hardest part: you need to search in the RAM of the game to find the values you want to send.
+I recommend using [CTR Plugin Framework](https://github.com/PabloMK7/CTRPluginFramework-BlankTemplate) on the 3DS. With this tool, you can use the `search` menu to search for a value, change the value in the game, and then search again to find the right one. 
+
+#### Create server script
+Scripts are named `<titleid>/script.lua` and are stored in the `scripts` folder. Each script must have a `build(game_info, extra_info)` function that returns a table representing the Discord Activity.
 
 - `game_info` is a Lua table:
   - `title_id` (string) — e.g. `"0004000000148900"`
