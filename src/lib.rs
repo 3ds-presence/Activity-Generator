@@ -42,16 +42,18 @@ impl ActivityGenerator {
     /// Create a new `ActivityGenerator`.
     ///
     /// `script_dir` — directory with `<title_id>/script.lua` scripts.
-    /// `assets_base_url` — base URL for game icon images.
+    /// `assets_base_url` — public base URL for game icon images (sent to Discord).
+    /// `available_titles_url` — base URL used to fetch `available_titles.json`.
     /// `mii_generator_server` — base URL for Mii images.
     ///
-    /// On construction, this fetches `{assets_base_url}/available_titles.json`
+    /// On construction, this fetches `{available_titles_url}/available_titles.json`
     /// to know which title IDs have icons. If the fetch fails, a warning is logged
     /// and every title will get the fallback `3ds_logo.png`.
     #[must_use]
     pub async fn new(
         script_dir: &str,
         assets_base_url: &str,
+        available_titles_url: &str,
         mii_generator_server: &str,
     ) -> Self {
         Self {
@@ -59,7 +61,7 @@ impl ActivityGenerator {
             script_runner: ScriptRunner::new(),
             assets_base_url: assets_base_url.trim_end_matches('/').to_string(),
             mii_generator_server: mii_generator_server.trim_end_matches('/').to_string(),
-            available_titles: AvailableTitles::load(assets_base_url).await,
+            available_titles: AvailableTitles::load(available_titles_url).await,
         }
     }
 
