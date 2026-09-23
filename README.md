@@ -13,7 +13,7 @@ The Activity-Generator can also generate an advanced activity with Lua Scripts. 
 
 ### Currently supported games
 Following games have custom scripts to generate advanced activities:
-- Hatsune Miku - Project Mirai DX (European version - 0004000000148C00)
+- Hatsune Miku - Project Mirai DX (European Version - 0004000000148900) (American Version - 0004000000148C00)
 
 ### Scripts guide
 The script process is divided into 2 parts: the 3DS side and the backend side. The 3DS side is responsible for sending the extra data to the backend, and the backend side is responsible for generating the activity based on that extra data. Both sides are required 
